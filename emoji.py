@@ -1,3 +1,5 @@
+
+
 import tkinter as tk
 from tkinter import *
 import cv2
@@ -43,48 +45,52 @@ global cap1
 show_text=[0]
 global frame_number
 
-
+def set_camera_resolution(cap, width, height):
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+exit_flag=False    
 
 def show_subject():
-    cap1 = cv2.VideoCapture('C:\\Users\\ASUS\\Pictures\\Camera Roll\\WIN_20231123_14_59_43_Pro.mp4')
-
+    global cap1, exit_flag, show_text, last_frame1
+    
+    cap1 = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     if not cap1.isOpened():
         print("Can't open the camera")
-    print("camera opened",cap1.isOpened())    
-    global frame_number
-    length=int(cap1.get(cv2.CAP_PROP_FRAME_COUNT))
-    frame_number+=1
-    if frame_number>=length:
-        exit()
-    cap1.set(1,frame_number)
-    flag1,frame1=cap1.read()
-    frame1=cv2.resize(frame1,(600,500))
-    bounding_box = cv2.CascadeClassifier('C:\\Users\\ASUS\\Downloads\\haarcascade_frontalface_default.xml')
-    gray_frame=cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
-    num_faces=bounding_box.detectMultiScale(gray_frame,scaleFactor=1.3, minNeighbors=5)
-    for(x,y,w,h) in num_faces:
-        cv2.rectangle(frame1 ,(x, y-50),(x+w, y+h+10), (255,0,0),2) 
-        roi_gray_frame=gray_frame[y:y+h, x:x+w]
-        cropped_img=np.expand_dims(np.expand_dims(cv2.resize(roi_gray_frame,(48,48)),-1),0)
-        prediction=emotion_model.predict(cropped_img)
-        maxindex=int(np.argmax(prediction))
-        cv2.putText(frame1,emotion_dict[maxindex],(x+20,y-60),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,255),2,cv2.LINE_AA)
-        show_text[0]=maxindex 
-    if flag1 is None:
-        print("Major Error!")
-    elif flag1:
-        global last_frame1
-        last_frame1=frame1.copy()
-        pic=cv2.cvtColor(last_frame1,cv2.COLOR_BGR2RGB)
-        img=Image.fromarray(pic)
-        imgtk=ImageTk.PhotoImage(image=img)
-        lmain.imgtk=imgtk
+        return
+
+    while not exit_flag:
+        ret, frame1 = cap1.read()
+        if not ret:
+            print("Cannot read frame")
+            break
+
+        frame1 = cv2.resize(frame1, (600, 500))  # Resize if needed
+
+        bounding_box = cv2.CascadeClassifier('C:\\Users\\ASUS\\Downloads\\haarcascade_frontalface_default.xml')
+        gray_frame = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
+        num_faces = bounding_box.detectMultiScale(gray_frame, scaleFactor=1.3, minNeighbors=5)
+        
+        for (x, y, w, h) in num_faces:
+            cv2.rectangle(frame1, (x, y-50), (x+w, y+h+10), (255, 0, 0), 2) 
+            roi_gray_frame = gray_frame[y:y+h, x:x+w]
+            cropped_img = np.expand_dims(np.expand_dims(cv2.resize(roi_gray_frame, (48, 48)), -1), 0)
+            prediction = emotion_model.predict(cropped_img)
+            maxindex = int(np.argmax(prediction))
+            cv2.putText(frame1, emotion_dict[maxindex], (x+20, y-60), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+            show_text[0] = maxindex
+
+        pic = cv2.cvtColor(frame1, cv2.COLOR_BGR2RGB)
+        img = Image.fromarray(pic)
+        imgtk = ImageTk.PhotoImage(image=img)
+        lmain.imgtk = imgtk
         lmain.configure(image=imgtk)
         root.update()
-        lmain.after(10,show_subject)
-    if cv2.waitKey(1) & 0xFF==ord('q'):
-        exit()  
         
+    cap1.release()
+    cv2.destroyAllWindows()
+    root.quit()
+    root.destroy()
+
 
 
 def show_avatar():
